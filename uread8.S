@@ -1,7 +1,7 @@
 /* Runtime ABI for the ARM Cortex-M0  
- * ldivmod.S: signed 64 bit division (only remainder)
+ * uread8.S: unaligned memory read
  *
- * Copyright (c) 2012 Jörg Mische <bobbl@gmx.de>
+ * Copyright (c) 2017 Jörg Mische <bobbl@gmx.de>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,43 +25,29 @@
 
 
 
-@ long long __moddi3(long long numerator, long long denominator)
+@ long long __aeabi_uread8(void *r0)
 @
-@ Divide r1:r0 by r3:r2 and return the remainder in r1:r0 (all signed)
-@ Special case of __aeabi_ldivmod() that is a lot simpler and moves the
-@ remainder to r1:r0.
+@ Read 8 little endian bytes from unaligned memory address
 @
 	.thumb_func
-        .global __moddi3
-__moddi3:
+	.global __aeabi_uread8
+__aeabi_uread8:
 
-	push	{r4, lr}
-	cmp	r3, #0
-	bge	L_dont_neg_den
-	
-	movs	r4, #0			@ den = -den
-	rsbs	r2, r2, #0
-	sbcs	r4, r3
-	mov	r3, r4
-L_dont_neg_den:
 
-	cmp	r1, #0
-	bge	L_pos_result
-	
-	movs	r4, #0			@ num = -num
-	rsbs	r0, r0, #0
-	sbcs	r4, r1
-	mov	r1, r4
-
-	bl	__aeabi_uldivmod
-	movs	r0, #0			@ rem = -rem
-	movs	r1, #0
-	subs	r0, r2
-	sbcs	r1, r3
-	pop	{r4, pc}
-
-L_pos_result:
-	bl	__aeabi_uldivmod
-	mov	r1, r3
-	mov	r0, r2
-	pop	{r4, pc}
+	push	{r4}
+	lsrs	r1, r0, #2
+	lsls	r1, r1, #2
+	lsls	r2, r0, #30
+	lsrs	r2, r2, #27
+	ldm	r1, {r0, r1, r3}
+	lsrs	r0, r2
+	mov	r4, r1
+	lsrs	r1, r2
+	subs	r2, #32
+	negs	r2, r2
+	lsls	r4, r2
+	lsls	r3, r2
+	orrs	r0, r4
+	orrs	r1, r3 
+	pop	{r4}
+	bx	lr

@@ -1,7 +1,7 @@
 /* Runtime ABI for the ARM Cortex-M0  
- * ldivmod.S: signed 64 bit division (only remainder)
+ * lcmp.S: signed 64 bit comparison
  *
- * Copyright (c) 2012 Jörg Mische <bobbl@gmx.de>
+ * Copyright (c) 2017 Jörg Mische <bobbl@gmx.de>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,43 +25,23 @@
 
 
 
-@ long long __moddi3(long long numerator, long long denominator)
+@ int __aeabi_lcmp(long long r1:r0, long long r3:r2)
 @
-@ Divide r1:r0 by r3:r2 and return the remainder in r1:r0 (all signed)
-@ Special case of __aeabi_ldivmod() that is a lot simpler and moves the
-@ remainder to r1:r0.
+@ Compare signed integers and return -1 if lower, 0 if equal or +1 if greater
 @
 	.thumb_func
-        .global __moddi3
-__moddi3:
+	.global __aeabi_lcmp
+__aeabi_lcmp:
 
-	push	{r4, lr}
-	cmp	r3, #0
-	bge	L_dont_neg_den
-	
-	movs	r4, #0			@ den = -den
-	rsbs	r2, r2, #0
-	sbcs	r4, r3
-	mov	r3, r4
-L_dont_neg_den:
-
-	cmp	r1, #0
-	bge	L_pos_result
-	
-	movs	r4, #0			@ num = -num
+	cmp	r1, r3
+	blt	1f
+	bgt	2f
+	cmp	r0, r2
+	bhi	2f
+	sbcs	r0, r0, r0		@ 0 if cs and -1 if cc
+	bx	lr
+1:	movs	r0, #1
 	rsbs	r0, r0, #0
-	sbcs	r4, r1
-	mov	r1, r4
-
-	bl	__aeabi_uldivmod
-	movs	r0, #0			@ rem = -rem
-	movs	r1, #0
-	subs	r0, r2
-	sbcs	r1, r3
-	pop	{r4, pc}
-
-L_pos_result:
-	bl	__aeabi_uldivmod
-	mov	r1, r3
-	mov	r0, r2
-	pop	{r4, pc}
+	bx	lr
+2:	movs	r0, #1
+	bx	lr
